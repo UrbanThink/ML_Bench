@@ -519,57 +519,6 @@ def ask_csp(rows, mode):
     
     return results
 
-    
-# Call ask_csp() directly from the console.
-# ask_csp() will be called using the file given as parameter without the .txt extension.
-# The file must be placed in the folder named "Data" and must contain lines of values separated by commas and without the prediction column, which means only the X predictor variables.
-# Line Example : 0,F,2,7,1501-2500,1,oui,0-1,4,0-1,6,month-03,jeudi,1
-# Call command : py 4_functions.py ask_csp file_name
-import sys
-import time
-from icecream import ic
-import pickle
-import csv
-import itertools
-import threading
-from termcolor import colored
-from statistics import mean
-
-# Line up and clear for prints
-LINE_UP = '\033[1A'
-LINE_CLEAR = '\x1b[2K'
-
-if sys.argv[1] == "ask_csp":
-    
-    # Get 2nd parameter. Name of the file containing rows to predict.
-    try:
-        filename = sys.argv[2]
-    except:
-        print("You must specify a file name as 2nd parameter, without the .txt extension. The file must contain lines of values separated by commas and without the prediction column.")
-        sys.exit()
-    
-    print("Asking csp...")
-    
-    # Load file as a matrix.
-    # The file must be placed in the folder named "Data" and must contain lines of values separated by commas and without the prediction column.
-    rows = []
-    with open('Data\\'+filename+'.txt', newline='') as csvfile:
-        rows = list(csv.reader(csvfile))
-    
-    # Call ask_csp().
-    results = ask_csp(rows, "full")
-    
-    # Display results.
-    print("------------------------")
-    print(colored("RESULTS", 'yellow'))
-    print("------------------------")
-    ic.configureOutput(prefix="Ask for : ")
-    for i in range(0, len(results)):
-        ic(str(rows[i]))
-        print("Predicted Value : " + colored(results[i], 'yellow'))
-        print('------------------------------')
-
-
 
 # Function to evaluate a ML model using various metrics.
 # y_test : the array of correct classes associated to X_test.
@@ -724,6 +673,135 @@ def evaluate_model(y_test, y_pred):
     return evaluation_metrics
 
 
+# Function to measure and explain the cross-referential (cross-dataset) predictive stability of a ML model.
+def mdps():
+
+    # The path to the .sav ML model to use.
+    model_path = "Data\\MDPS_Models\\nbayes_scikit_model.sav"
+    # The path to the datasets folder (Cross-referential system).
+    datasets_path = "Data\\MDPS_Datasets\\"
+
+    # Load the model
+    with open(model_path, 'rb') as f:
+      model = pickle.load(f)
+    
+    # For each dataset, load it, predict with the model, do the MDPS measurements, do the visualisations, do the synthesis tables and generate the PDF.
+    for dataset in os.listdir(datasets_path):
+        
+        # Load data
+        file_path = datasets_path + dataset
+        # Determining the number of columns in the dataset.
+        with open(file_path) as f:
+            n_cols = len(f.readline().split(";"))
+        # Load
+        X = np.loadtxt(file_path, usecols=range(0,n_cols-1), delimiter=";", dtype='str')
+        y = np.loadtxt(file_path, usecols=n_cols-1, delimiter=";", dtype='str')        
+ 
+        # Encode the categorical features
+        encoder = LabelEncoder()
+        X = np.transpose(X)
+        for row in range(0, len(X)):
+            X[row] = encoder.fit_transform(X[row])
+        X = np.transpose(X)
+  
+        # Split the dataset into train and test sets
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.9, random_state=None
+        )
+            
+        ic(X_test)
+        ic(len(X_test[0]))
+        ic(y_test)
+        #sys.exit()
+        
+        # Predict on the dataset with the model.
+        y_pred = model.predict(X_test)
+    
+        # Evaluate the model
+        evaluation_metrics = evaluate_model(y_test, y_pred)
+        
+        sys.exit()
+        # Save predictions.
+
+    # For each combination predictions/predictions.
+        
+        # Measure gaps.
+        
+        # Measure MDPS.
+        
+        # Create visualisations.
+        
+        # Create the synthesis table.
+    
+    # Agregate MDPS measurements.
+    
+    # Create global visualisations.
+    
+    # Create the global synthesis table.
+    
+    # Generate the PDF.
+
+
+
+# Call ask_csp() directly from the console.
+# ask_csp() will be called using the file given as parameter without the .txt extension.
+# The file must be placed in the folder named "Data" and must contain lines of values separated by commas and without the prediction column, which means only the X predictor variables.
+# Line Example : 0,F,2,7,1501-2500,1,oui,0-1,4,0-1,6,month-03,jeudi,1
+# Call command : py 4_functions.py ask_csp file_name
+import sys
+import time
+from icecream import ic
+import pickle
+import csv
+import itertools
+import threading
+from termcolor import colored
+from statistics import mean
+import os
+from pandas import DataFrame
+from sklearn.preprocessing import LabelEncoder
+import numpy as np
+from numpy import transpose
+from sklearn.model_selection import train_test_split
+
+# Line up and clear for prints
+LINE_UP = '\033[1A'
+LINE_CLEAR = '\x1b[2K'
+
+if sys.argv[1] == "mdps":
+    mdps()
+elif sys.argv[1] == "ask_csp":
+    
+    # Get 2nd parameter. Name of the file containing rows to predict.
+    try:
+        filename = sys.argv[2]
+    except:
+        print("You must specify a file name as 2nd parameter, without the .txt extension. The file must contain lines of values separated by commas and without the prediction column.")
+        sys.exit()
+    
+    print("Asking csp...")
+    
+    # Load file as a matrix.
+    # The file must be placed in the folder named "Data" and must contain lines of values separated by commas and without the prediction column.
+    rows = []
+    with open('Data\\'+filename+'.txt', newline='') as csvfile:
+        rows = list(csv.reader(csvfile))
+    
+    # Call ask_csp().
+    results = ask_csp(rows, "full")
+    
+    # Display results.
+    print("------------------------")
+    print(colored("RESULTS", 'yellow'))
+    print("------------------------")
+    ic.configureOutput(prefix="Ask for : ")
+    for i in range(0, len(results)):
+        ic(str(rows[i]))
+        print("Predicted Value : " + colored(results[i], 'yellow'))
+        print('------------------------------')
+
+
+
 def naive_bayes():
     # Load data
     file_path = "Outputs/df.csv"
@@ -731,7 +809,7 @@ def naive_bayes():
     with open(file_path) as f:
         n_cols = len(f.readline().split(","))
     # Load
-    X = np.loadtxt(file_path, usecols=range(0,n_cols-2), delimiter=",", dtype='str')
+    X = np.loadtxt(file_path, usecols=range(0,n_cols-1), delimiter=",", dtype='str')
     y = np.loadtxt(file_path, usecols=n_cols-1, delimiter=",", dtype='str')
     
     # Encode the categorical features
@@ -767,10 +845,8 @@ def naive_bayes():
     # print(predicted)
     
     # Save model using pickle
-    # import pickle
-    # print("Saving trained naive Bayes model ")
-    # path = ".\\Models\\bayes_scikit_model.sav"
-    # pickle.dump(model, open(path, "wb"))
+    path = "Data\\MDPS_Models\\nbayes_scikit_model.sav"
+    pickle.dump(model, open(path, "wb"))
     
     # Predict by loading the model
     # x = np.array([[1, 0, 2]], dtype=np.int64)
@@ -791,8 +867,11 @@ def decision_tree():
     with open(file_path) as f:
         n_cols = len(f.readline().split(","))
     # Load
-    X = np.loadtxt(file_path, usecols=range(0,n_cols-2), delimiter=",", dtype='str')
+    X = np.loadtxt(file_path, usecols=range(0,n_cols-1), delimiter=",", dtype='str')
     y = np.loadtxt(file_path, usecols=n_cols-1, delimiter=",", dtype='str') 
+    
+    ic(X)
+    ic(len(X))
     
     # Encode the categorical features
     encoder = LabelEncoder()
@@ -844,7 +923,7 @@ def logistic_regression():
     with open(file_path) as f:
         n_cols = len(f.readline().split(","))
     # Load
-    X = np.loadtxt(file_path, usecols=range(0,n_cols-2), delimiter=",", dtype='str')
+    X = np.loadtxt(file_path, usecols=range(0,n_cols-1), delimiter=",", dtype='str')
     y = np.loadtxt(file_path, usecols=n_cols-1, delimiter=",", dtype='str')
     
     # Encode the categorical features
@@ -896,7 +975,7 @@ def linear_regression():
     with open(file_path) as f:
         n_cols = len(f.readline().split(","))
     # Load
-    X = np.loadtxt(file_path, usecols=range(0,n_cols-2), delimiter=",", dtype='str')
+    X = np.loadtxt(file_path, usecols=range(0,n_cols-1), delimiter=",", dtype='str')
     y = np.loadtxt(file_path, usecols=n_cols-1, delimiter=",", dtype='str')
     
     # Encode the categorical features
@@ -943,7 +1022,7 @@ def neural_network():
     with open(file_path) as f:
         n_cols = len(f.readline().split(","))
     # Load
-    X = np.loadtxt(file_path, usecols=range(0,n_cols-2), delimiter=",", dtype='str')
+    X = np.loadtxt(file_path, usecols=range(0,n_cols-1), delimiter=",", dtype='str')
     y = np.loadtxt(file_path, usecols=n_cols-1, delimiter=",", dtype='str')
     
     # Encode the categorical features
@@ -1040,7 +1119,7 @@ def neural_net_categorical():
     with open(file_path) as f:
         n_cols = len(f.readline().split(","))
     # Load
-    X = np.loadtxt(file_path, usecols=range(0,n_cols-2), delimiter=",", dtype='str')
+    X = np.loadtxt(file_path, usecols=range(0,n_cols-1), delimiter=",", dtype='str')
     y = np.loadtxt(file_path, usecols=n_cols-1, delimiter=",", dtype='str')
 
     # Encode the categorical features
@@ -1121,7 +1200,7 @@ def k_nearest_neighbours():
     with open(file_path) as f:
         n_cols = len(f.readline().split(","))
     # Load
-    X = np.loadtxt(file_path, usecols=range(0,n_cols-2), delimiter=",", dtype='str')
+    X = np.loadtxt(file_path, usecols=range(0,n_cols-1), delimiter=",", dtype='str')
     y = np.loadtxt(file_path, usecols=n_cols-1, delimiter=",", dtype='str')
 
     # Encode the categorical features
@@ -1183,7 +1262,7 @@ def k_means():
     with open(file_path) as f:
         n_cols = len(f.readline().split(","))
     # Load
-    X = np.loadtxt(file_path, usecols=range(0,n_cols-2), delimiter=",", dtype='str')
+    X = np.loadtxt(file_path, usecols=range(0,n_cols-1), delimiter=",", dtype='str')
     y = np.loadtxt(file_path, usecols=n_cols-1, delimiter=",", dtype='str')
 
     # Encode the categorical features
@@ -1239,7 +1318,7 @@ def support_vector_machine():
     with open(file_path) as f:
         n_cols = len(f.readline().split(","))
     # Load
-    X = np.loadtxt(file_path, usecols=range(0,n_cols-2), delimiter=",", dtype='str')
+    X = np.loadtxt(file_path, usecols=range(0,n_cols-1), delimiter=",", dtype='str')
     y = np.loadtxt(file_path, usecols=n_cols-1, delimiter=",", dtype='str')
 
     # Encode the categorical features
