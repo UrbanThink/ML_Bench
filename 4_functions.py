@@ -26,7 +26,7 @@ def csp():
     y_full_test = []
     for tab in X_full_test:
         y_full_test.append(tab[-1])
-        del tab[-1]  
+        del tab[-1]
     
     # --------------------
     # Make Model for splitted data
@@ -673,73 +673,1071 @@ def evaluate_model(y_test, y_pred):
     return evaluation_metrics
 
 
-# Function to measure and explain the cross-referential (cross-dataset) predictive stability of a ML model.
+# Function to compute the mdps of a gaps array.
+# It is called inside the mdps() function.
+def compute_mdps(gaps):
+    
+    gaps_qty = len(gaps)
+    gaps_mean = mean(gaps)
+    gaps_sigma = pstdev(gaps)
+    mdps = 0
+
+    if gaps_sigma > 0:
+        # MDPS Numerator
+        mdps_numerator = gaps_qty*(gaps_qty-1)
+        # MDPS Denominator
+        deno_part_1 = 0
+        deno_part_2 = 0
+        for n in range(0, gaps_qty):
+            for m in range(n+1, gaps_qty):
+                deno_part_1 += abs((gaps[n]-gaps[m])/gaps_sigma)
+        for n in range(0, gaps_qty):
+            deno_part_2 += abs((gaps[n]-gaps_mean)/gaps_sigma)
+        mdps_denominator = deno_part_1 * deno_part_2
+        # MDPS
+        mdps = mdps_numerator/mdps_denominator
+        # Contract MDPS value
+        mdps = round(mdps*100, 2)
+
+    return mdps
+
+
+# Function to measure and explain the cross-referential (cross-dataset) predictive stability of a set of ML models.
+# It is the call function.
 def mdps():
 
-    # The path to the .sav ML model to use.
-    model_path = "Data\\MDPS_Models\\nbayes_scikit_model.sav"
+    # The path to the .sav ML models folder.
+    models_path = "Data\\MDPS_Models\\"
     # The path to the datasets folder (Cross-referential system).
     datasets_path = "Data\\MDPS_Datasets\\"
-
-    # Load the model
-    with open(model_path, 'rb') as f:
-      model = pickle.load(f)
     
-    # For each dataset, load it, predict with the model, do the MDPS measurements, do the visualisations, do the synthesis tables and generate the PDF.
-    for dataset in os.listdir(datasets_path):
+    all_global_mdps = {}
+    all_features_mdps = {}
+    all_y_classes_mdps = {}
+    all_y_classes_gaps = {}
+
+    # For each model
+    for model_file in os.listdir(models_path):
+
+        # Load the model
+        model_path = models_path + model_file
+        with open(model_path, 'rb') as f:
+          model = pickle.load(f)
+        f.close()
         
-        # Load data
-        file_path = datasets_path + dataset
-        # Determining the number of columns in the dataset.
-        with open(file_path) as f:
-            n_cols = len(f.readline().split(";"))
-        # Load
-        X = np.loadtxt(file_path, usecols=range(0,n_cols-1), delimiter=";", dtype='str')
-        y = np.loadtxt(file_path, usecols=n_cols-1, delimiter=";", dtype='str')        
- 
-        # Encode the categorical features
-        encoder = LabelEncoder()
-        X = np.transpose(X)
-        for row in range(0, len(X)):
-            X[row] = encoder.fit_transform(X[row])
-        X = np.transpose(X)
-  
-        # Split the dataset into train and test sets
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.9, random_state=None
-        )
+        global_mdps = {}
+        features_mdps = {}
+        y_classes_mdps = {}
+        y_classes_gaps = {}
+        
+        all_pred = []
+        all_eval = []
+        all_acc_inter_feat = []
+        all_acc_inter_feat_max = []
+        all_acc_inter_feat_min = []
+        all_acc_intra_feat_max = []
+        all_acc_intra_feat_min = []
+        all_mean_feature_class_qty = []
+        all_each_feature_class_qty = []
+        all_each_feature_class_acc = []
+        all_each_feature_acc = []
+        all_each_y_class_acc = []
+        all_each_y_class_occ = []
+        all_dataset_y_class_mean_occ = []
+        all_dataset_y_class_mean_acc = []
+        all_each_feature_class_occurrences = []
+        
+        # For each dataset, load it, predict with the model, do the MDPS measurements, do the visualisations, do the synthesis tables and generate the PDF.
+        for dataset in os.listdir(datasets_path):
             
-        ic(X_test)
-        ic(len(X_test[0]))
-        ic(y_test)
-        #sys.exit()
-        
-        # Predict on the dataset with the model.
-        y_pred = model.predict(X_test)
-    
-        # Evaluate the model
-        evaluation_metrics = evaluate_model(y_test, y_pred)
-        
-        sys.exit()
-        # Save predictions.
+            # Load data
+            file_path = datasets_path + dataset
+            # Determining the number of columns in the dataset.
+            with open(file_path) as f:
+                n_cols = len(f.readline().split(";"))
+            f.close()
+            # Load
+            X = np.loadtxt(file_path, usecols=range(0,n_cols-1), delimiter=";", dtype='str')
+            y = np.loadtxt(file_path, usecols=n_cols-1, delimiter=";", dtype='str')
+            
+            # Encode the categorical features
+            encoder = LabelEncoder()
+            X = np.transpose(X)
+            for row in range(0, len(X)):
+                X[row] = encoder.fit_transform(X[row])
+            X = np.transpose(X)
+      
+            # Convert X to numeric values
+            X = X.astype(int)
+            # Convert y to numeric values
+            # y = y.astype(int)
 
-    # For each combination predictions/predictions.
-        
-        # Measure gaps.
-        
-        # Measure MDPS.
-        
-        # Create visualisations.
-        
-        # Create the synthesis table.
+            # ------------------------------
+            # # Predict with handling errors for unseen categories.
+            # y_pred = []
+            # for row in X:
+                # try:
+                    # pred_value = model.predict([row])[0]
+                    # y_pred.append(pred_value)
+                # except:
+                    # # Append a default "Unknown" prediction.
+                    # y_pred.append("Unknown")
+            # ic(y_pred)
+            # evaluation_metrics = evaluate_model(y, y_pred)
+            # ic(evaluation_metrics)
+            # sys.exit()
+            # ------------------------------
+            
+            # Predict on the dataset with the model
+            y_pred = model.predict(X)
+            # Save predictions
+            all_pred.append(y_pred)
+            
+            # Evaluate the model
+            evaluation_metrics = evaluate_model(y, y_pred)
+            # Save evaluation metrics
+            all_eval.append(evaluation_metrics)
+            
+            # Construct the dict containing feature_class accuracies
+            # feat_n => {class_0:accuracy, class_1:accuracy, ...}
+            features = {}
+            for col in range(0, len(X[0])):
+                feat = "feat_"+str(col)
+                new_key_value = {feat:{}}
+                features.update(new_key_value)
+                for row in range(0, len(X)):
+                    class_ = "class_"+str(X[row][col])
+                    # Check if the pred is right
+                    wrong = 0
+                    right = 0
+                    if y[row] == y_pred[row]:
+                        right = 1
+                    else:
+                        wrong = 1
+                    # Add to features
+                    if class_ in features[feat]:
+                        features[feat][class_]["right"] += right
+                        features[feat][class_]["wrong"] += wrong
+                        features[feat][class_]["accuracy"] = features[feat][class_]["right"]/(features[feat][class_]["right"]+features[feat][class_]["wrong"])
+                    else:
+                        new_key_value = {class_:{}}
+                        features[feat].update(new_key_value)
+                        new_key_value = {"right":right}
+                        features[feat][class_].update(new_key_value)
+                        new_key_value = {"wrong":wrong}
+                        features[feat][class_].update(new_key_value)
+                        new_key_value = {"accuracy":right/(right+wrong)}
+                        features[feat][class_].update(new_key_value)
+            
+            # Construct the dict containing each feature class occurrences
+            each_feature_class_occ = {}
+            for feat in features:
+                new_key_value = {feat:{}}
+                each_feature_class_occ.update(new_key_value)
+                for class_ in features[feat]:
+                    occ = features[feat][class_]["right"]+features[feat][class_]["wrong"]
+                    new_key_value = {class_:occ}
+                    each_feature_class_occ[feat].update(new_key_value)
+            all_each_feature_class_occurrences.append(each_feature_class_occ)
+            
+            # Construct the dict containing each feature class accuracy
+            each_feature_class_acc = {}
+            for feat in features:
+                new_key_value = {feat:{}}
+                each_feature_class_acc.update(new_key_value)
+                for class_ in features[feat]:
+                    acc = features[feat][class_]["accuracy"]
+                    new_key_value = {class_:acc}
+                    each_feature_class_acc[feat].update(new_key_value)
+            all_each_feature_class_acc.append(each_feature_class_acc)
+            
+            # Construct the dict containing y classes accuracies
+            y_class_acc = {}
+            for col in range(0, len(y)):
+                y_class = y[col]
+                # Check if the pred is right
+                wrong = 0
+                right = 0
+                if y[col] == y_pred[col]:
+                    right = 1
+                else:
+                    wrong = 1
+                # Add to y_class_acc
+                if y_class in y_class_acc:
+                    y_class_acc[y_class]["right"] += right
+                    y_class_acc[y_class]["wrong"] += wrong
+                    y_class_acc[y_class]["accuracy"] = y_class_acc[y_class]["right"]/(y_class_acc[y_class]["right"]+y_class_acc[y_class]["wrong"])
+                else:
+                    new_key_value = {y_class:{}}
+                    y_class_acc.update(new_key_value)
+                    new_key_value = {"right":right}
+                    y_class_acc[y_class].update(new_key_value)
+                    new_key_value = {"wrong":wrong}
+                    y_class_acc[y_class].update(new_key_value)
+                    new_key_value = {"accuracy":right/(right+wrong)}
+                    y_class_acc[y_class].update(new_key_value)
+            all_each_y_class_acc.append(y_class_acc)
+            
+            # Construct the dict containing y classes occurrences
+            y_class_occ = {}
+            for class_ in y_class_acc:
+                occ = y_class_acc[class_]["right"] + y_class_acc[class_]["wrong"]
+                new_key_value = {class_:occ}
+                y_class_occ.update(new_key_value)
+            all_each_y_class_occ.append(y_class_occ)
+
+            # Compute current dataset mean y classes occurrences and add it to all_dataset_y_class_mean_occ.
+            mean_occ = mean(y_class_occ.values())  
+            all_dataset_y_class_mean_occ.append(mean_occ)
+            
+            # Compute current dataset mean y classes accuracy and add it to all_dataset_y_class_mean_acc.
+            mean_acc = 0
+            len_y_class_acc = len(y_class_acc)
+            for class_ in y_class_acc:
+                mean_acc += y_class_acc[class_]['accuracy']/len_y_class_acc
+            all_dataset_y_class_mean_acc.append(mean_acc)
+
+            # Construct the dict containing each feature mean accuracy.
+            features_acc = {}
+            for feat in features:
+                mean_acc = 0
+                class_qty = len(features[feat])
+                for class_ in features[feat]:
+                    mean_acc += features[feat][class_]["accuracy"]/class_qty
+                new_key_value = {feat:mean_acc}
+                features_acc.update(new_key_value)
+            
+            # Construct the dict containing each feature class quantity.
+            features_class_qty = {}
+            for feat in features:
+                class_qty = len(features[feat])
+                new_key_value = {feat:class_qty}
+                features_class_qty.update(new_key_value)
+            all_each_feature_class_qty.append(features_class_qty)
+                
+            # Get Accuracy Inter-Features
+            acc_inter_feat = 0
+            feat_qty = len(features_acc)
+            for feat in features_acc:
+                acc_inter_feat += features_acc[feat]/feat_qty
+            all_acc_inter_feat.append(acc_inter_feat)
+
+            # Get Accuracy Inter-Features Max
+            acc_inter_feat_max = max(features_acc.values())
+            all_acc_inter_feat_max.append(acc_inter_feat_max)
+            
+            # Get Accuracy Inter-Features Min
+            acc_inter_feat_min = min(features_acc.values())
+            all_acc_inter_feat_min.append(acc_inter_feat_min)
+            
+            # Get Accuracy Intra-Features Max
+            acc_intra_feat_max = 0
+            for feat in features:
+                for class_ in features[feat]:
+                    if features[feat][class_]["accuracy"] > acc_intra_feat_max:
+                        acc_intra_feat_max = features[feat][class_]["accuracy"]
+            all_acc_intra_feat_max.append(acc_intra_feat_max)
+            
+            # Get Accuracy Intra-Features Min
+            acc_intra_feat_min = 1
+            for feat in features:
+                for class_ in features[feat]:
+                    if features[feat][class_]["accuracy"] < acc_intra_feat_min:
+                        acc_intra_feat_min = features[feat][class_]["accuracy"]
+            all_acc_intra_feat_min.append(acc_intra_feat_min)
+            
+            # Get Mean Feature_Class Quantity
+            mean_feature_class_qty = mean(features_class_qty.values())
+            all_mean_feature_class_qty.append(mean_feature_class_qty)
+            
+            # Get Each Feature Accuracy
+            # => Just use features_acc
+            all_each_feature_acc.append(features_acc)
+
+
+        # For each combination predictions/predictions.
+        for i in range(0, len(all_pred)-1): 
+            for j in range(i+1, len(all_pred)):
+                
+                #--------------------
+                # Measure gaps.
+                #--------------------
+                gaps = []
+                # Les écarts de scoring prédictifs (accuracy, precision, F1, Recall, Jaccard, Matthews, Hamming et autres);
+                gap_accuracy = abs(all_eval[i]["accuracy"]-all_eval[j]["accuracy"])
+                gaps.append(gap_accuracy)
+                
+                gap_f1_macro = abs(all_eval[i]["f1_macro"]-all_eval[j]["f1_macro"])
+                gaps.append(gap_f1_macro)
+                
+                gap_f1_micro = abs(all_eval[i]["f1_micro"]-all_eval[j]["f1_micro"])
+                gaps.append(gap_f1_micro)
+                
+                gap_f1_weighted = abs(all_eval[i]["f1_weighted"]-all_eval[j]["f1_weighted"])
+                gaps.append(gap_f1_weighted)
+                
+                gap_fbeta_macro = abs(all_eval[i]["fbeta_macro"]-all_eval[j]["fbeta_macro"])
+                gaps.append(gap_fbeta_macro)
+                
+                gap_fbeta_micro = abs(all_eval[i]["fbeta_micro"]-all_eval[j]["fbeta_micro"])
+                gaps.append(gap_fbeta_micro)
+                
+                gap_fbeta_weighted = abs(all_eval[i]["fbeta_weighted"]-all_eval[j]["fbeta_weighted"])
+                gaps.append(gap_fbeta_weighted)
+                
+                gap_ham_loss = abs(all_eval[i]["ham_loss"]-all_eval[j]["ham_loss"])
+                gaps.append(gap_ham_loss)
+                
+                gap_jaccard_macro = abs(all_eval[i]["jaccard_macro"]-all_eval[j]["jaccard_macro"])
+                gaps.append(gap_jaccard_macro)
+                
+                gap_jaccard_micro = abs(all_eval[i]["jaccard_micro"]-all_eval[j]["jaccard_micro"])
+                gaps.append(gap_jaccard_micro)
+                
+                gap_jaccard_weighted = abs(all_eval[i]["jaccard_weighted"]-all_eval[j]["jaccard_weighted"])
+                gaps.append(gap_jaccard_weighted)
+                
+                gap_matthews_cc = abs(all_eval[i]["matthews_cc"]-all_eval[j]["matthews_cc"])
+                gaps.append(gap_matthews_cc)
+                
+                gap_precision_macro = abs(all_eval[i]["precision_macro"]-all_eval[j]["precision_macro"])
+                gaps.append(gap_precision_macro)
+                
+                gap_precision_micro = abs(all_eval[i]["precision_micro"]-all_eval[j]["precision_micro"])
+                gaps.append(gap_precision_micro)
+                
+                gap_precision_weighted = abs(all_eval[i]["precision_weighted"]-all_eval[j]["precision_weighted"])
+                gaps.append(gap_precision_weighted)
+                
+                gap_recall_macro = abs(all_eval[i]["recall_macro"]-all_eval[j]["recall_macro"])
+                gaps.append(gap_recall_macro)
+                
+                gap_recall_micro = abs(all_eval[i]["recall_micro"]-all_eval[j]["recall_micro"])
+                gaps.append(gap_recall_micro)
+                
+                gap_recall_weighted = abs(all_eval[i]["recall_weighted"]-all_eval[j]["recall_weighted"])
+                gaps.append(gap_recall_weighted)
+
+                # L'écart prédictif inter-features;
+                # all_acc_inter_feat = []
+                gap_acc_inter_feat = abs(all_acc_inter_feat[i]-all_acc_inter_feat[j])
+                gaps.append(gap_acc_inter_feat)
+
+                # L'écart des extrema prédictifs inter-features;
+                # all_acc_inter_feat_max = []
+                # all_acc_inter_feat_min = []
+                gap_acc_inter_feat_max = abs(all_acc_inter_feat_max[i]-all_acc_inter_feat_max[j])
+                gaps.append(gap_acc_inter_feat_max)
+                gap_acc_inter_feat_min = abs(all_acc_inter_feat_min[i]-all_acc_inter_feat_min[j])
+                gaps.append(gap_acc_inter_feat_min)
+                
+                # L'écart des extrema prédictifs intra-features;
+                # all_acc_intra_feat_max = []
+                # all_acc_intra_feat_min = []
+                gap_acc_intra_feat_max = abs(all_acc_intra_feat_max[i]-all_acc_intra_feat_max[j])
+                gaps.append(gap_acc_intra_feat_max)
+                gap_acc_intra_feat_min = abs(all_acc_intra_feat_min[i]-all_acc_intra_feat_min[j])
+                gaps.append(gap_acc_intra_feat_min)
+                
+                # Les écarts de quantités de classes de features.
+                # all_mean_feature_class_qty = []
+                gap_mean_feature_class_qty = abs(all_mean_feature_class_qty[i]-all_mean_feature_class_qty[j])
+                gaps.append(gap_mean_feature_class_qty)
+                
+                # Les écarts prédictifs de chaque feature;
+                # all_each_feature_acc = []
+                for feat in all_each_feature_acc[i]:
+                    gap_current_feat = abs(all_each_feature_acc[i][feat]-all_each_feature_acc[j][feat])
+                    gaps.append(gap_current_feat)
+
+                # Les écarts prédictifs de chaque classe à prédire;
+                # all_each_y_class_acc = [] 
+                for y_class in all_each_y_class_acc[i]:
+                    if y_class in all_each_y_class_acc[j]:
+                        gap_current_y_class = abs(all_each_y_class_acc[i][y_class]["accuracy"]-all_each_y_class_acc[j][y_class]["accuracy"])
+                        gaps.append(gap_current_y_class)
+                    else:
+                        gap_current_y_class = all_each_y_class_acc[i][y_class]["accuracy"]
+                        gaps.append(gap_current_y_class)
+                for y_class in all_each_y_class_acc[j]:
+                    if y_class not in all_each_y_class_acc[i]:
+                        gap_current_y_class = all_each_y_class_acc[j][y_class]["accuracy"]
+                        gaps.append(gap_current_y_class)
+
+
+                #--------------------
+                # Measure the global MDPS for the current versus
+                #--------------------
+                mdps = compute_mdps(gaps)
+                # Add to global_mdps
+                versus_name = "Dataset_"+str(i)+"_VS_"+str(j)
+                new_key_value = {versus_name:mdps}
+                global_mdps.update(new_key_value)
+
+
+                #--------------------
+                # Measure each feature MDPS for the current versus
+                #--------------------
+                # Feature caracteristics to consider to compute gaps for the current versus:
+                # - Class quantity
+                # - Mean Class Occurrences
+                # - Variance Class Occurrences
+                # - Standard Deviation Class Occurrences
+                # - Max Class Occurrences
+                # - Min Class Occurrences
+                # - Diff Min/Max Class Occurrences
+                # - Mean Class Accuracy
+                # - Max Class Accuracy
+                # - Min Class Accuracy
+                # - Diff Min/Max Class Accuracy
+                # --------------------
+
+                current_features_mdps = {}
+
+                for feat in features:
+                    # Reset gaps
+                    gaps = []
+                    
+                    # - Class quantity
+                    gap_current_feat = abs(all_each_feature_class_qty[i][feat]-all_each_feature_class_qty[j][feat])
+                    gaps.append(gap_current_feat)
+                
+                    # - Mean Class Occurrences
+                    mean_i = mean(all_each_feature_class_occurrences[i][feat].values())
+                    mean_j = mean(all_each_feature_class_occurrences[j][feat].values())
+                    gap_current_feat = abs(mean_i-mean_j)
+                    gaps.append(gap_current_feat)
+                
+                    # - Variance Class Occurrences
+                    # var_i = var(all_each_feature_class_occurrences[i][feat].values())
+                    # var_j = var(all_each_feature_class_occurrences[j][feat].values())
+                    # gap_current_feat = abs(var_i-var_j)
+                    # gaps.append(gap_current_feat)
+                
+                    # - Standard Deviation Class Occurrences
+                    # pstdev_i = pstdev(all_each_feature_class_occurrences[i][feat].values())
+                    # pstdev_j = pstdev(all_each_feature_class_occurrences[j][feat].values())
+                    # gap_current_feat = abs(pstdev_i-pstdev_j)
+                    # gaps.append(gap_current_feat)
+                    
+                    # - Max Class Occurrences
+                    max_i = max(all_each_feature_class_occurrences[i][feat].values())
+                    max_j = max(all_each_feature_class_occurrences[j][feat].values())
+                    gap_current_feat = abs(max_i-max_j)
+                    gaps.append(gap_current_feat)
+                    
+                    # - Min Class Occurrences
+                    min_i = min(all_each_feature_class_occurrences[i][feat].values())
+                    min_j = min(all_each_feature_class_occurrences[j][feat].values())
+                    gap_current_feat = abs(min_i-min_j)
+                    gaps.append(gap_current_feat)
+                    
+                    # - Diff Min/Max Class Occurrences
+                    diff_i = abs(min(all_each_feature_class_occurrences[i][feat].values()) - max(all_each_feature_class_occurrences[i][feat].values()))
+                    diff_j = abs(min(all_each_feature_class_occurrences[j][feat].values()) - max(all_each_feature_class_occurrences[j][feat].values()))
+                    gap_current_feat = abs(diff_i-diff_j)
+                    gaps.append(gap_current_feat)
+                
+                    # - Mean Class Accuracy
+                    gap_current_feat = abs(all_each_feature_acc[i][feat]-all_each_feature_acc[j][feat])
+                    gaps.append(gap_current_feat)
+                    
+                    # - Max Class Accuracy
+                    max_i = max(all_each_feature_class_acc[i][feat].values())
+                    max_j = max(all_each_feature_class_acc[j][feat].values())
+                    gap_current_feat = abs(max_i-max_j)
+                    gaps.append(gap_current_feat)
+                
+                    # - Min Class Accuracy
+                    min_i = min(all_each_feature_class_acc[i][feat].values())
+                    min_j = min(all_each_feature_class_acc[j][feat].values())
+                    gap_current_feat = abs(min_i-min_j)
+                    gaps.append(gap_current_feat)
+                    
+                    # - Diff Min/Max Class Accuracy
+                    diff_i = abs(min(all_each_feature_class_acc[i][feat].values()) - max(all_each_feature_class_acc[i][feat].values()))
+                    diff_j = abs(min(all_each_feature_class_acc[j][feat].values()) - max(all_each_feature_class_acc[j][feat].values()))
+                    gap_current_feat = abs(diff_i-diff_j)
+                    gaps.append(gap_current_feat)
+                
+                    # Compute the current feature MDPS
+                    mdps = compute_mdps(gaps)
+                    
+                    # Add to current_features_mdps
+                    new_key_value = {feat:mdps}
+                    current_features_mdps.update(new_key_value)
+                    
+                # Add to features_mdps
+                versus_name = "Dataset_"+str(i)+"_VS_"+str(j)
+                new_key_value = {versus_name:current_features_mdps}
+                features_mdps.update(new_key_value)
+
+
+                #--------------------
+                # Measure each y_class MDPS for the current versus
+                #--------------------
+                # y classes caracteristics to consider to compute gaps for the current versus:
+                # - y Class Occurrences
+                # - y Class Accuracy
+                # - Diff(y Class Occurrences, Mean Occurrences All y Classes)
+                # - Diff(y Class Accuracy, Mean Accuracy All y Classes)
+                # --------------------
+                
+                current_y_classes_mdps = {}
+                current_y_classes_gaps = {}
+
+                for class_ in all_each_y_class_acc[i]:
+                    # Reset gaps
+                    gaps = []
+                    
+                    if class_ in all_each_y_class_acc[j]:
+                        # - Class Occurrences
+                        occ_i = all_each_y_class_occ[i][class_]
+                        occ_j = all_each_y_class_occ[j][class_]
+                        gap_current_feat = abs(occ_i-occ_j)
+                        gaps.append(gap_current_feat)
+                        
+                        # - Class Occurrences/Mean Occurrences
+                        mean_occ_i = all_dataset_y_class_mean_occ[i]
+                        mean_occ_j = all_dataset_y_class_mean_occ[j]
+                        gap_current_feat = abs((occ_i-mean_occ_i)-(occ_j-mean_occ_j))
+                        gaps.append(gap_current_feat)
+                        
+                        # - Class Accuracy
+                        acc_i = all_each_y_class_acc[i][class_]["accuracy"]
+                        acc_j = all_each_y_class_acc[j][class_]["accuracy"]
+                        gap_current_feat = abs(acc_i-acc_j)
+                        gaps.append(gap_current_feat)
+                        
+                        # - Class Accuracy/Mean Accuracy
+                        mean_acc_i = all_dataset_y_class_mean_acc[i]
+                        mean_acc_j = all_dataset_y_class_mean_acc[j]
+                        gap_current_feat = abs((acc_i-mean_acc_i)-(acc_j-mean_acc_j))
+                        gaps.append(gap_current_feat)
+                    
+                        # Compute the current class MDPS
+                        mdps = compute_mdps(gaps)
+                        
+                        # Add to current_y_classes_mdps
+                        new_key_value = {class_:mdps}
+                        current_y_classes_mdps.update(new_key_value)
+                        
+                        # Add to current_y_classes_gaps
+                        new_key_value = {class_:gaps}
+                        current_y_classes_gaps.update(new_key_value)
+                    else:
+                        # - Class Occurrences
+                        occ_i = all_each_y_class_occ[i][class_]
+                        gap_current_feat = occ_i
+                        gaps.append(gap_current_feat)
+                        
+                        # - Class Occurrences/Mean Occurrences
+                        mean_occ_i = all_dataset_y_class_mean_occ[i]
+                        gap_current_feat = abs(occ_i-mean_occ_i)
+                        gaps.append(gap_current_feat)
+                        
+                        # - Class Accuracy
+                        acc_i = all_each_y_class_acc[i][class_]["accuracy"]
+                        gap_current_feat = acc_i
+                        gaps.append(gap_current_feat)
+                        
+                        # - Class Accuracy/Mean Accuracy
+                        mean_acc_i = all_dataset_y_class_mean_acc[i]
+                        gap_current_feat = abs(acc_i-mean_acc_i)
+                        gaps.append(gap_current_feat)
+                    
+                        # Compute the current class MDPS
+                        mdps = compute_mdps(gaps)
+                        
+                        # Add to current_y_classes_mdps
+                        new_key_value = {class_:mdps}
+                        current_y_classes_mdps.update(new_key_value)
+                        
+                        # Add to current_y_classes_gaps
+                        new_key_value = {class_:gaps}
+                        current_y_classes_gaps.update(new_key_value)
+
+                for class_ in all_each_y_class_acc[j]:  
+                    # Reset gaps
+                    gaps = []
+                    
+                    if class_ not in all_each_y_class_acc[i]:
+                        # - Class Occurrences
+                        occ_j = all_each_y_class_occ[j][class_]
+                        gap_current_feat = occ_j
+                        gaps.append(gap_current_feat)
+                        
+                        # - Class Occurrences/Mean Occurrences
+                        mean_occ_j = all_dataset_y_class_mean_occ[j]
+                        gap_current_feat = abs(occ_j-mean_occ_j)
+                        gaps.append(gap_current_feat)
+                        
+                        # - Class Accuracy
+                        acc_j = all_each_y_class_acc[j][class_]["accuracy"]
+                        gap_current_feat = acc_j
+                        gaps.append(gap_current_feat)
+                        
+                        # - Class Accuracy/Mean Accuracy
+                        mean_acc_j = all_dataset_y_class_mean_acc[j]
+                        gap_current_feat = abs(acc_j-mean_acc_j)
+                        gaps.append(gap_current_feat)
+                    
+                        # Compute the current class MDPS
+                        mdps = compute_mdps(gaps)
+                        
+                        # Add to current_y_classes_mdps
+                        new_key_value = {class_:mdps}
+                        current_y_classes_mdps.update(new_key_value)
+                        
+                        # Add to current_y_classes_gaps
+                        new_key_value = {class_:gaps}
+                        current_y_classes_gaps.update(new_key_value)
+                        
+                # Add to y_classes_mdps
+                versus_name = "Dataset_"+str(i)+"_VS_"+str(j)
+                new_key_value = {versus_name:current_y_classes_mdps}
+                y_classes_mdps.update(new_key_value)
+                
+                # Add to y_classes_gaps
+                versus_name = "Dataset_"+str(i)+"_VS_"+str(j)
+                new_key_value = {versus_name:current_y_classes_gaps}
+                y_classes_gaps.update(new_key_value)
     
-    # Agregate MDPS measurements.
+        # Save the MDPS dictionaries for the current model
+        model_name = model_file.split(".")[0]
+        new_key_value = {model_name:global_mdps}
+        all_global_mdps.update(new_key_value)
+        new_key_value = {model_name:features_mdps}
+        all_features_mdps.update(new_key_value)
+        new_key_value = {model_name:y_classes_mdps}
+        all_y_classes_mdps.update(new_key_value)
+        new_key_value = {model_name:y_classes_gaps}
+        all_y_classes_gaps.update(new_key_value)
     
-    # Create global visualisations.
+    # End of treatments of all models on all datasets.
+
+
+    # ------------------------------
+    # Create visualisations
+    # ------------------------------
+    # ------------------------------
+    # Function to add values on top of bars
+    def add_values_on_top(bars):
+        for bar in bars:
+            height = bar.get_height()
+            ax.annotate('{}'.format(height),
+                        xy=(bar.get_x() + bar.get_width() / 2, height),
+                        xytext=(0, 0),  # 3 points vertical offset
+                        textcoords="offset points",
+                        ha='center', va='bottom')
+    # ------------------------------
+
+    # ------------------------------
+    # - Barchart du MDPS de chaque modèle, tout versus confondus
+    # ------------------------------
+    # ic(all_global_mdps)
     
-    # Create the global synthesis table.
+    # Calculate the mean MDPS for each model
+    all_global_mean_mdps = {}
+    for model in all_global_mdps:
+        mean_mdps = mean(all_global_mdps[model].values())
+        mean_mdps = round(mean_mdps, 2)
+        new_key_value = {model:mean_mdps}
+        all_global_mean_mdps.update(new_key_value)
     
-    # Generate the PDF.
+    data = all_global_mean_mdps
+    
+    # Extracting bars and their values
+    bars = list(data.keys())
+    values = [data[bar] for bar in bars]
+    
+    # Plotting the bar chart
+    bar_width = 0.3
+    x = range(len(bars))
+    fig, ax = plt.subplots()
+    bars_plt = ax.bar(x, values, width=bar_width)
+    # Adding values on top of the bars
+    add_values_on_top(bars_plt)    
+
+    # Set various information and show
+    plt.xlabel('Model')
+    plt.ylabel('MDPS')
+    plt.title('MDPS - Each Model On All Versus Mixed')
+    plt.xticks(x, bars)
+    #plt.legend(loc ="best", fontsize="8")
+    plt.tight_layout()
+    # Save the bar chart as a JPG image
+    plt.savefig("Outputs\Graphs\Barchart_MDPS_Each_Model_On_All_Versus_Mixed.jpg")
+    #plt.show()
+    plt.close()
+    
+    # ------------------------------
+    # - Barchart du MDPS de chaque modèle sur chaque versus
+    # ------------------------------
+    # ic(all_global_mdps)
+    
+    data = all_global_mdps
+
+    # Extracting categories and their values
+    # categories = list(data['Bar1'].keys())
+    first_key = next(iter(data))
+    categories = list(data[first_key].keys())
+    bars = list(data.keys())
+    values = [[data[bar][category] for category in categories] for bar in bars]
+
+    # Plotting the bar chart
+    bar_width = 0.3
+    x = range(len(categories))
+    fig, ax = plt.subplots()
+    for i, bar in enumerate(bars):
+        bars_plt = ax.bar([pos + bar_width * i for pos in x], values[i], width=bar_width, label=bar)
+        # Adding values on top of the bars
+        add_values_on_top(bars_plt)    
+
+    # Set various information and show
+    plt.xlabel('Versus')
+    plt.ylabel('MDPS')
+    plt.title('MDPS - Each Model On Each Versus')
+    plt.xticks([pos + bar_width for pos in x], categories)
+    plt.legend(loc ="best", fontsize="8")
+    plt.tight_layout()
+    # Save the bar chart as a JPG image
+    plt.savefig("Outputs\Graphs\Barchart_MDPS_Each_Model_On_Each_Versus.jpg")
+    #plt.show()
+    plt.close()
+
+    # ------------------------------
+    # - Barchart du MDPS de chaque modèle sur chaque feature
+    # ------------------------------
+    # ic(all_features_mdps)
+    
+    # Calculate the mean MDPS of each feature for each model
+    mean_feat_mdps_by_model = {}
+    for model in all_features_mdps:
+        new_key_value = {model:{}}
+        mean_feat_mdps_by_model.update(new_key_value)
+        for versus in all_features_mdps[model]:
+            for feat in all_features_mdps[model][versus]:
+                if feat in mean_feat_mdps_by_model[model]:
+                    mean_feat_mdps_by_model[model][feat].append(all_features_mdps[model][versus][feat])
+                else:
+                    new_key_value = {feat:[]}
+                    mean_feat_mdps_by_model[model].update(new_key_value)
+                    mean_feat_mdps_by_model[model][feat].append(all_features_mdps[model][versus][feat])
+    for model in mean_feat_mdps_by_model:
+        for feat in mean_feat_mdps_by_model[model]:
+            mean_mdps = mean(mean_feat_mdps_by_model[model][feat])
+            mean_mdps = round(mean_mdps, 2)
+            mean_feat_mdps_by_model[model][feat] = mean_mdps
+       
+    data = mean_feat_mdps_by_model
+    
+    # Extracting categories and their values
+    first_key = next(iter(data))
+    categories = list(data[first_key].keys())
+    bars = list(data.keys())
+    values = [[data[bar][category] for category in categories] for bar in bars]
+
+    # Plotting the bar chart
+    bar_width = 0.3
+    x = range(len(categories))
+    fig, ax = plt.subplots()
+    for i, bar in enumerate(bars):
+        bars_plt = ax.bar([pos + bar_width * i for pos in x], values[i], width=bar_width, label=bar)
+        # Adding values on top of the bars
+        # add_values_on_top(bars_plt)    
+
+    # Set various information and show
+    plt.xlabel('Feature')
+    plt.ylabel('MDPS')
+    plt.title('MDPS - Each Model On Each Feature')
+    plt.xticks([pos+bar_width for pos in x], categories)
+    plt.xticks(rotation=90)
+    plt.legend(loc ="best", fontsize="8")
+    plt.tight_layout()
+    # Save the bar chart as a JPG image
+    plt.savefig("Outputs\Graphs\Barchart_MDPS_Each_Model_On_Each_Feature.jpg")
+    #plt.show()
+    plt.close()
+    
+    # ------------------------------
+    # - Barchart du MDPS de chaque modèle sur chaque classe à prédire
+    # ------------------------------
+    # ic(all_y_classes_mdps)
+    
+    # Calculate the mean MDPS of each y_class for each model
+    mean_yclass_mdps_by_model = {}
+    for model in all_y_classes_mdps:
+        new_key_value = {model:{}}
+        mean_yclass_mdps_by_model.update(new_key_value)
+        for versus in all_y_classes_mdps[model]:
+            for yclass in all_y_classes_mdps[model][versus]:
+                if yclass in mean_yclass_mdps_by_model[model]:
+                    mean_yclass_mdps_by_model[model][yclass].append(all_y_classes_mdps[model][versus][yclass])
+                else:
+                    new_key_value = {yclass:[]}
+                    mean_yclass_mdps_by_model[model].update(new_key_value)
+                    mean_yclass_mdps_by_model[model][yclass].append(all_y_classes_mdps[model][versus][yclass])
+    for model in mean_yclass_mdps_by_model:
+        for yclass in mean_yclass_mdps_by_model[model]:
+            mean_mdps = mean(mean_yclass_mdps_by_model[model][yclass])
+            mean_mdps = round(mean_mdps, 2)
+            mean_yclass_mdps_by_model[model][yclass] = mean_mdps
+       
+    data = mean_yclass_mdps_by_model
+    
+    # Extracting categories and their values
+    first_key = next(iter(data))
+    categories = list(data[first_key].keys())
+    bars = list(data.keys())
+    values = [[data[bar][category] for category in categories] for bar in bars]
+
+    # Plotting the bar chart
+    bar_width = 0.3
+    x = range(len(categories))
+    fig, ax = plt.subplots()
+    for i, bar in enumerate(bars):
+        bars_plt = ax.bar([pos + bar_width * i for pos in x], values[i], width=bar_width, label=bar)
+        # Adding values on top of the bars
+        # add_values_on_top(bars_plt)    
+
+    # Set various information and show
+    plt.xlabel('Y Class')
+    plt.ylabel('MDPS')
+    plt.title('MDPS - Each Model On Each Y_Class')
+    plt.xticks([pos+bar_width for pos in x], categories)
+    plt.xticks(rotation=90)
+    plt.legend(loc ="best", fontsize="8")
+    plt.tight_layout()
+    # Save the bar chart as a JPG image
+    plt.savefig("Outputs\Graphs\Barchart_MDPS_Each_Model_On_Each_Y_Class.jpg")
+    #plt.show()
+    plt.close()
+
+
+    # ------------------------------
+    # Get information for the synthesis table
+    # ------------------------------
+    # Informations de synthèse des visualisations : 
+    # - Le modèle ayant le meilleur MDPS, tout versus confondus
+    # - Liste des modèles ayant un MDPS en dessous de la moyenne, tout versus confondus
+    # - Liste des versus ayant un MDPS en dessous de la moyenne
+    # - Liste des features ayant un MDPS en dessous de la moyenne
+    # - Liste des classes à prédire ayant un MDPS en dessous de la moyenne
+    # ------------------------------
+    
+    # - Le modèle ayant le meilleur MDPS, tout versus confondus
+    # ic(all_global_mean_mdps)
+    # Sort the dictionary keys based on their values in DESC order
+    d = all_global_mean_mdps
+    sorted_models = sorted(d, key=lambda x: d[x], reverse=True)
+    best_model = sorted_models[0]
+    # ic(best_model)
+
+    # - Liste des modèles ayant un MDPS en dessous de la moyenne, tout versus confondus
+    below_mean_models = []
+    mean_mdps = mean(all_global_mean_mdps.values())
+    for model in all_global_mean_mdps:
+        if all_global_mean_mdps[model] < mean_mdps:
+            below_mean_models.append(model)
+    # ic(below_mean_models)
+
+    # - Liste des versus ayant un MDPS en dessous de la moyenne
+    # ic(all_global_mdps)
+    model_qty = len(all_global_mdps)
+    all_versus_mean_mdps = {}
+    for model in all_global_mdps:
+        for versus in all_global_mdps[model]:
+            if versus in all_versus_mean_mdps:
+                value = all_global_mdps[model][versus]/model_qty
+                value = round(value, 1)
+                all_versus_mean_mdps[versus] += value
+            else:
+                value = all_global_mdps[model][versus]/model_qty
+                value = round(value, 1)
+                new_key_value = {versus:value}
+                all_versus_mean_mdps.update(new_key_value)
+    # ic(all_versus_mean_mdps)
+    # Sort the dictionary keys based on their values in ASC order
+    d = all_versus_mean_mdps
+    sorted_versus = sorted(d, key=lambda x: d[x], reverse=False)
+    # Get all versus having a MDPS below mean
+    below_mean_versus = []
+    mean_mdps = mean(all_versus_mean_mdps.values())
+    for versus in all_versus_mean_mdps:
+        if all_versus_mean_mdps[versus] < mean_mdps:
+            below_mean_versus.append(versus)
+    # ic(below_mean_versus)
+    
+    # - Liste des features ayant un MDPS en dessous de la moyenne
+    #ic(mean_feat_mdps_by_model)
+    model_qty = len(mean_feat_mdps_by_model)
+    all_feat_mean_mdps = {}
+    for model in mean_feat_mdps_by_model:
+        for feat in mean_feat_mdps_by_model[model]:
+            if feat in all_feat_mean_mdps:
+                value = mean_feat_mdps_by_model[model][feat]/model_qty
+                value = round(value, 1)
+                all_feat_mean_mdps[feat] += value
+            else:
+                value = mean_feat_mdps_by_model[model][feat]/model_qty
+                value = round(value, 1)
+                new_key_value = {feat:value}
+                all_feat_mean_mdps.update(new_key_value)
+    #ic(all_feat_mean_mdps)
+    # Sort the dictionary keys based on their values in ASC order
+    d = all_feat_mean_mdps
+    sorted_feat = sorted(d, key=lambda x: d[x], reverse=False)
+    # Get all features having a MDPS below mean
+    below_mean_features = []
+    mean_mdps = mean(all_feat_mean_mdps.values())
+    for feat in all_feat_mean_mdps:
+        if all_feat_mean_mdps[feat] < mean_mdps:
+            below_mean_features.append(feat)
+    # ic(below_mean_features)
+    
+    # - Liste des classes à prédire ayant un MDPS en dessous de la moyenne
+    # ic(mean_yclass_mdps_by_model)
+    model_qty = len(mean_yclass_mdps_by_model)
+    all_yclass_mean_mdps = {}
+    for model in mean_yclass_mdps_by_model:
+        for yclass in mean_yclass_mdps_by_model[model]:
+            if yclass in all_yclass_mean_mdps:
+                value = mean_yclass_mdps_by_model[model][yclass]/model_qty
+                value = round(value, 1)
+                all_yclass_mean_mdps[yclass] += value
+            else:
+                value = mean_yclass_mdps_by_model[model][yclass]/model_qty
+                value = round(value, 1)
+                new_key_value = {yclass:value}
+                all_yclass_mean_mdps.update(new_key_value)
+    # ic(all_yclass_mean_mdps)
+    # Sort the dictionary keys based on their values in ASC order
+    d = all_yclass_mean_mdps
+    sorted_yclass = sorted(d, key=lambda x: d[x], reverse=False)
+    # Get all yclass having a MDPS below mean
+    below_mean_yclass = []
+    mean_mdps = mean(all_yclass_mean_mdps.values())
+    for yclass in all_yclass_mean_mdps:
+        if all_yclass_mean_mdps[yclass] < mean_mdps:
+            below_mean_yclass.append(yclass)
+    # ic(below_mean_yclass)
+
+    
+    # ------------------------------        
+    # Generate the PDF
+    # ------------------------------
+    # Contains all visualisations and the synthesis table.
+    # Must take one page max.
+
+    # Create instance of FPDF class
+    pdf = FPDF()
+
+    # Add a page
+    pdf.add_page()
+    
+    # Add cell for title
+    pdf.set_font("Arial", 'B', size=16)
+    pdf.cell(200, 10, txt="MDPS Report", ln=True, align='C')
+
+    # Models and Datasets used
+    pdf.set_font("Arial", 'B', size=12)
+    pdf.cell(200, 10, txt="Models & Datasets", ln=True)
+    
+    # Models List
+    models_list = []
+    for model in all_global_mdps:
+        models_list.append(model)
+    # Datasets List
+    datasets_list = []
+    for dataset in os.listdir(datasets_path):
+        datasets_list.append(dataset.split('.')[0])
+    # Reformat arrays to display
+    models_str = str(models_list).replace('\'', '').replace('[', '').replace(']', '')
+    datasets_str = str(datasets_list).replace('\'', '').replace('[', '').replace(']', '')
+    # Models and Datasets Table  
+    table_data = [
+        ['Models', models_str],
+        ['Datasets', datasets_str]
+    ]
+    
+    # Output the table
+    pdf.set_font("Arial", size=10)
+    col_widths = [20, 170]
+    for row in table_data:
+        x = pdf.get_x()  # Get current x position
+        y = pdf.get_y()  # Get current y position
+        for i, cell in enumerate(row):
+            pdf.set_xy(x + sum(col_widths[:i]), y)  # Set position for each cell
+            # Create cell
+            pdf.multi_cell(col_widths[i], 6, txt=cell, border=1, align='C')
+        #pdf.ln()
+    
+    pdf.ln()
+    
+    # Reformat arrays to display
+    bmm = str(below_mean_models).replace('\'', '').replace('[', '').replace(']', '')
+    bmv = str(below_mean_versus).replace('\'', '').replace('[', '').replace(']', '')
+    bmf = str(below_mean_features).replace('\'', '').replace('[', '').replace(']', '')
+    bmy = str(below_mean_yclass).replace('\'', '').replace('[', '').replace(']', '')
+
+    # Synthesis table
+    pdf.set_font("Arial", 'B', size=12)
+    pdf.cell(200, 10, txt="Synthesis Table", ln=True)
+    # Models and Datasets Table  
+    table_data = [
+        ['Most Stable Model', str(best_model)],
+        ['Models < Mean MDPS', bmm],
+        ['Versus < Mean MDPS', bmv],
+        ['Features < Mean MDPS', bmf],
+        ['Y Classes < Mean MDPS', bmy]
+    ]
+    # Output the table
+    pdf.set_font("Arial", size=10)
+    col_widths = [50, 140]
+    for row in table_data:
+        x = pdf.get_x()  # Get current x position
+        y = pdf.get_y()  # Get current y position
+        for i, cell in enumerate(row):
+            pdf.set_xy(x + sum(col_widths[:i]), y)  # Set position for each cell
+            pdf.multi_cell(col_widths[i], 6, txt=cell, border=1, align='C')
+        #pdf.ln(10)  # Move to the next line after a row
+
+    pdf.ln()
+    
+    # Barcharts
+    pdf.set_font("Arial", 'B', size=12)
+    pdf.cell(200, 10, txt="Barcharts", ln=True)
+    
+    # Barchart N°1 & N°2
+    # First image
+    x1 = 10
+    y1 = pdf.get_y()
+    pdf.image("Outputs\Graphs\Barchart_MDPS_Each_Model_On_All_Versus_Mixed.jpg", x=x1, y=y1, w=95)
+    # Second image
+    x2 = x1 + 95  # Adjust the horizontal distance between images
+    y2 = y1
+    pdf.image("Outputs\Graphs\Barchart_MDPS_Each_Model_On_Each_Versus.jpg", x=x2, y=y2, w=95)
+
+    # Barchart N°3 & N°4
+    # Third image
+    x1 = 10
+    y1 = pdf.get_y() + 75
+    pdf.image("Outputs\Graphs\Barchart_MDPS_Each_Model_On_Each_Feature.jpg", x=x1, y=y1, w=95)
+    # Fourth image
+    x2 = x1 + 95  # Adjust the horizontal distance between images
+    y2 = y1
+    pdf.image("Outputs\Graphs\Barchart_MDPS_Each_Model_On_Each_Y_Class.jpg", x=x2, y=y2, w=95)
+    
+    # Save the PDF
+    pdf.output("Outputs\MDPS_Report.pdf")
+    
+    # Open the PDF report
+    file_path = "Outputs\MDPS_Report.pdf"
+    os.startfile(file_path)
+
+
+
 
 
 
@@ -748,25 +1746,12 @@ def mdps():
 # The file must be placed in the folder named "Data" and must contain lines of values separated by commas and without the prediction column, which means only the X predictor variables.
 # Line Example : 0,F,2,7,1501-2500,1,oui,0-1,4,0-1,6,month-03,jeudi,1
 # Call command : py 4_functions.py ask_csp file_name
-import sys
-import time
-from icecream import ic
-import pickle
-import csv
-import itertools
-import threading
-from termcolor import colored
-from statistics import mean
-import os
-from pandas import DataFrame
-from sklearn.preprocessing import LabelEncoder
-import numpy as np
-from numpy import transpose
-from sklearn.model_selection import train_test_split
 
-# Line up and clear for prints
-LINE_UP = '\033[1A'
-LINE_CLEAR = '\x1b[2K'
+# Imports
+import sys
+if sys.argv[1] == "mdps" or sys.argv[1] == "ask_csp":
+    from past.builtins import execfile
+    execfile('1_imports.py')
 
 if sys.argv[1] == "mdps":
     mdps()
@@ -834,26 +1819,18 @@ def naive_bayes():
     # Evaluate the model
     evaluation_metrics = evaluate_model(y_test, y_pred)
     
-    # Use model
-    # Question row example : [3,1,0]
-    # print("\nPredicting class...")
-    # probs = model.predict_proba([[3,1,0]])
-    # print("\nPrediction probs: ")
-    # print(probs)
-    # predicted = model.predict([[3,1,0]])
-    # print("\nPredicted class: ")
-    # print(predicted)
-    
-    # Save model using pickle
-    path = "Data\\MDPS_Models\\nbayes_scikit_model.sav"
+    # Save model (or clf) using pickle
+    path = "Data\\MDPS_Models\\"+algo_name+"_model.sav"
     pickle.dump(model, open(path, "wb"))
     
-    # Predict by loading the model
-    # x = np.array([[1, 0, 2]], dtype=np.int64)
+    # Load the model
     # with open(path, 'rb') as f:
-    #   loaded_model = pickle.load(f)
-    # pa = loaded_model.predict_proba(x)
-    # print(pa)    
+    #   model = pickle.load(f)
+    
+    # Use model
+    # Question row example : [3,1,0]
+    # probas = model.predict_proba([[3,1,0]])
+    # predicted = model.predict([[3,1,0]])
     
     return [
         evaluation_metrics
@@ -869,9 +1846,6 @@ def decision_tree():
     # Load
     X = np.loadtxt(file_path, usecols=range(0,n_cols-1), delimiter=",", dtype='str')
     y = np.loadtxt(file_path, usecols=n_cols-1, delimiter=",", dtype='str') 
-    
-    ic(X)
-    ic(len(X))
     
     # Encode the categorical features
     encoder = LabelEncoder()
@@ -896,6 +1870,10 @@ def decision_tree():
 
     # Evaluate the model
     evaluation_metrics = evaluate_model(y_test, y_pred)
+    
+    # Save model (or clf) using pickle
+    path = "Data\\MDPS_Models\\"+algo_name+"_model.sav"
+    pickle.dump(clf, open(path, "wb"))
     
     # --------------------
     """
@@ -962,6 +1940,10 @@ def logistic_regression():
 
     # Evaluate the model
     evaluation_metrics = evaluate_model(y_test, y_pred)
+    
+    # Save model (or clf or ...) using pickle
+    path = "Data\\MDPS_Models\\"+algo_name+"_model.sav"
+    pickle.dump(logreg, open(path, "wb"))
     
     return [
         evaluation_metrics
@@ -1249,6 +2231,19 @@ def k_nearest_neighbours():
 
     # Evaluate the model
     evaluation_metrics = evaluate_model(y_test, y_pred)
+    
+    # Save model (or clf) using pickle
+    path = "Data\\MDPS_Models\\"+algo_name+"_model.sav"
+    pickle.dump(clf, open(path, "wb"))
+    
+    # Load the model
+    # with open(path, 'rb') as f:
+    #   model = pickle.load(f)
+    
+    # Use model
+    # Question row example : [3,1,0]
+    # probas = model.predict_proba([[3,1,0]])
+    # predicted = model.predict([[3,1,0]])
     
     return [
         evaluation_metrics

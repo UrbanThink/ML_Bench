@@ -1,25 +1,6 @@
-import sys
-import os
-import sqlite3
-import pandas as pd
-from pandas import DataFrame
-from sklearn import preprocessing
-import numpy as np
-from numpy import savetxt
-from copy import deepcopy
-from icecream import ic
-from numpy import transpose
-from statistics import mean
-import csv
-from numpy import array
-from numpy import delete
-import math
-from numpy import argsort as argsort
+# Imports
 from past.builtins import execfile
-import subprocess
-import tensorflow as tf
-import random
-
+execfile('1_imports.py')
 
 # Get parameters given for script execution.
 # The 1st parameter is the dataset name to use. It is the name of the file without the extension. The dataset must be a .txt file with ";" as delimiter.
@@ -57,7 +38,7 @@ macro_iterations = 1
 # Type inside brackets the names of the algorithms you want to execute. 
 # Available algorithms : "naive_bayes", "decision_tree", "logistic_regression", "neural_net_categorical", "k_nearest_neighbours", "support_vector_machine", "csp"
 # Not suitable for categorical predictions : "linear_regression", "neural_network", "k_means"
-algos = ["csp"]
+algos = ["naive_bayes", "decision_tree", "k_nearest_neighbours", "logistic_regression"]
 algo_types = ""
 for t in algos:
     algo_types += t + "-"

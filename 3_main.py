@@ -4,10 +4,6 @@ execfile('1_imports.py')
 execfile('4_functions.py')
 # exec(open("./filename").read()) # => for Unix machines
 
-# Line up and clear for prints
-LINE_UP = '\033[1A'
-LINE_CLEAR = '\x1b[2K'
-
 # Get parameters/Global_Variables.
 # Reminder : In Python, accessing global variables inside functions is ok but if we want to MODIFY a global variable inside a function, we must declare it as global inside the function or use a singleton pattern.
 

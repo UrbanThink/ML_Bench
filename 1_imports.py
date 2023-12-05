@@ -1,7 +1,8 @@
-import csv 
-import json
+
 import sys
 import os
+import csv 
+import json
 import requests
 from pprint import pprint
 import random
@@ -14,9 +15,14 @@ from copy import deepcopy
 from icecream import ic
 import operator
 import pickle
+from termcolor import colored
+import subprocess
+from fpdf import FPDF
 
 import statistics 
 from statistics import mean
+from statistics import variance as var
+from statistics import pstdev
 
 import pandas as pd
 from pandas import DataFrame
@@ -24,6 +30,7 @@ from pandas import DataFrame
 import scipy.stats as stats
 from scipy.stats import ranksums
 
+import itertools
 from itertools import combinations
 from itertools import permutations
 from itertools import product
@@ -31,6 +38,7 @@ from itertools import product
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
+#from matplotlib.pyplot import table as plot_table
 
 import numpy as np
 from numpy import array
@@ -51,6 +59,7 @@ from numpy import argsort as argsort
 from numpy import matrix as np_matrix
 from numpy import arange as arange
 from numpy import seterr
+from numpy import delete
 
 import sklearn
 from sklearn import preprocessing
@@ -58,7 +67,6 @@ from sklearn.model_selection import train_test_split
 from sklearn.naive_bayes import GaussianNB
 from sklearn.naive_bayes import CategoricalNB
 from sklearn.preprocessing import LabelEncoder
-
 # All scorer objects follow the convention that higher return values are better than lower return values. Thus metrics which measure the distance between the model and the data, like metrics.mean_squared_error, are available as neg_mean_squared_error which return the negated value of the metric.
 from sklearn.metrics import (
     accuracy_score,
@@ -86,7 +94,6 @@ from sklearn.metrics import (
     precision_recall_curve,
     roc_curve
 )
-
 from sklearn.tree import DecisionTreeClassifier
 from sklearn import metrics
 from sklearn.linear_model import LogisticRegression
@@ -106,16 +113,6 @@ from tensorflow.keras.utils import to_categorical
 import keras
 from keras import layers
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+# Line up and clear for prints
+LINE_UP = '\033[1A'
+LINE_CLEAR = '\x1b[2K'
