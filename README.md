@@ -25,7 +25,7 @@ python3 -m pip install scipy
 python3 -m pip install itertools
 python3 -m pip install matplotlib
 python3 -m pip install numpy
-(module déprécié) python3 -m pip install sklearn 
+python3 -m pip install scikit-learn 
 python3 -m pip install tensorflow
 ```
 ### Windows
