@@ -1,6 +1,7 @@
 # MobiShift
 ## 1 - Bien démarrer
-### Installer python3
+### Linux
+#### Installer python3
 Lien vers un [tutoriel](https://docs.python-guide.org/starting/install3/linux/)
 ### Comment installer les dépendances
 
@@ -27,3 +28,4 @@ python3 -m pip install numpy
 (module déprécié) python3 -m pip install sklearn 
 python3 -m pip install tensorflow
 ```
+### Windows
