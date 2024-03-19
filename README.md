@@ -19,4 +19,11 @@ python3 -m pip install xlsxwriter
 python3 -m pip install icecream
 python3 -m pip install termcolor
 python3 -m pip install fpdf
+python3 -m pip install pandas
+python3 -m pip install scipy
+python3 -m pip install itertools
+python3 -m pip install matplotlib
+python3 -m pip install numpy
+~~python3 -m pip install sklearn~~ module déprécié
+python3 -m pip install tensorflow
 ```
